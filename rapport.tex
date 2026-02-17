@@ -1,0 +1,511 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{float}
+
+% Configuration des marges
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Configuration des titres
+\titleformat{\section}{\Large\bfseries\color{blue}}{ \thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{black}}{ \thesubsection}{1em}{}
+
+% Configuration des en-têtes et pieds de page
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{TP Monitoring AWS}
+\fancyhead[R]{\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% Configuration pour les codes sources
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{white},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    language=bash
+}
+\lstset{style=mystyle}
+
+% Métadonnées du document
+\title{\textbf{Mise en œuvre d'une infrastructure cloud de supervision centralisée sous AWS:\\Déploiement de Zabbix conteneurisé pour le monitoring d'un parc hybride (Linux \& Windows)}}
+\author{}
+\date{}
+
+\begin{document}
+
+% Page de garde
+\begin{titlepage}
+    \begin{center}
+        % Logo de l'établissement (à remplacer par votre logo)
+        \includegraphics[width=0.3\textwidth]{logo_etablissement.png}\\[1.5cm]
+        
+        {\LARGE \textbf{Rapport de Travail Pratique}}\\[0.5cm]
+        
+        {\Huge \textbf{Infrastructure de Monitoring}}\\[0.3cm]
+        {\Huge \textbf{Centralisé sur AWS}}\\[1cm]
+        
+        {\Large \textbf{Titre:} Mise en œuvre d'une infrastructure cloud de supervision centralisée sous AWS}\\[1.5cm]
+        
+        \begin{minipage}[t]{0.4\textwidth}
+            \begin{flushleft}
+                \textbf{Réalisé par:}\\
+                El Abssi Sami\\
+            \end{flushleft}
+        \end{minipage}
+        \begin{minipage}[t]{0.4\textwidth}
+            \begin{flushright}
+                \textbf{Encadré par:}\\
+                Prof. Azeddine KHIAT
+            \end{flushright}
+        \end{minipage}\\[2cm]
+        
+        \textbf{Filière:} Ingénieur informatique et intelligence artificielle\\[1cm]
+        
+        \textbf{Année universitaire: 2025/2026}\\[2cm]
+        
+        \textbf{Dépôt GitHub:}\\
+        \href{https://github.com/samielabssi/Infrastructure-de-Monitoring-Centralis-sur-AWS}{https://github.com/samielabssi/Infrastructure-de-Monitoring-Centralis-sur-AWS}
+    \end{center}
+\end{titlepage}
+
+% Table des matières
+\newpage
+\tableofcontents
+\newpage
+
+% Introduction
+\section{Introduction}
+
+\subsection{Présentation du projet}
+Ce travail pratique a pour objectif de déployer une infrastructure de monitoring centralisée sur Amazon Web Services (AWS) en utilisant Zabbix conteneurisé avec Docker. L'infrastructure vise à surveiller un parc hybride composé de machines Linux et Windows, démontrant ainsi la flexibilité et la puissance de Zabbix dans un environnement cloud.
+
+\subsection{Outils utilisés}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{AWS (Amazon Web Services)}: Plateforme cloud utilisée pour héberger toute l'infrastructure (instances EC2, VPC, groupes de sécurité).
+    \item \textbf{Docker}: Solution de conteneurisation permettant de déployer facilement Zabbix et ses composants (serveur, base de données, interface web).
+    \item \textbf{Zabbix}: Solution de monitoring open-source offrant une surveillance complète des ressources système et réseau.
+\end{itemize}
+
+\subsection{Architecture globale}
+L'infrastructure déployée comprend:
+\begin{itemize}
+    \item Un VPC avec un sous-réseau public
+    \item Trois instances EC2: serveur Zabbix, client Linux, client Windows
+    \item Des groupes de sécurité pour contrôler les flux réseau
+    \item Zabbix déployé via Docker Compose
+    \item Des agents Zabbix installés sur les clients
+\end{itemize}
+
+\newpage
+
+% Architecture Réseau
+\section{Architecture Réseau}
+
+\subsection{Création du VPC}
+La première étape consiste à créer un VPC (Virtual Private Cloud) isolé pour héberger notre infrastructure. Nous avons opté pour une configuration simple avec un sous-réseau public pour faciliter l'accès sans VPN.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/vpc_creation.png}
+    \caption{Création du VPC 'TP-Zabbix-VPC' avec le bloc CIDR 10.0.0.0/16}
+    \label{fig:vpc}
+\end{figure}
+
+\subsection{Configuration du sous-réseau et de la passerelle Internet}
+Un sous-réseau public a été créé dans la zone de disponibilité us-east-1a. Une passerelle Internet a été attachée au VPC pour permettre la communication avec l'extérieur.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/subnet_config.png}
+    \caption{Configuration du sous-réseau public avec le CIDR 10.0.1.0/24}
+    \label{fig:subnet}
+\end{figure}
+
+\subsection{Table de routage}
+La table de routage a été configurée pour diriger le trafic Internet (0.0.0.0/0) vers la passerelle Internet.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/route_table.png}
+    \caption{Table de routage avec la route par défaut vers l'Internet Gateway}
+    \label{fig:routetable}
+\end{figure}
+
+\subsection{Groupes de sécurité}
+Deux groupes de sécurité ont été créés pour sécuriser les communications:
+
+\subsubsection{Groupe de sécurité du serveur Zabbix}
+Ce groupe contrôle l'accès au serveur Zabbix:
+\begin{itemize}
+    \item Port 22 (SSH): Accès administrateur
+    \item Port 80/443 (HTTP/HTTPS): Interface web Zabbix
+    \item Ports 10050/10051: Communications avec les agents Zabbix
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/sg_server.png}
+    \caption{Règles d'entrée du groupe de sécurité 'SG\_Serveur\_Zabbix'}
+    \label{fig:sgserver}
+\end{figure}
+
+\subsubsection{Groupe de sécurité des clients}
+Ce groupe sécurise les instances clientes:
+\begin{itemize}
+    \item Port 22 (SSH): Accès au client Linux
+    \item Port 3389 (RDP): Accès au client Windows
+    \item Ports 10050/10051: Restreints à l'IP privée du serveur Zabbix
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/sg_clients.png}
+    \caption{Règles d'entrée du groupe de sécurité 'SG\_Clients'}
+    \label{fig:sgclients}
+\end{figure}
+
+\newpage
+
+% Architecture des Instances EC2
+\section{Déploiement des Instances EC2}
+
+\subsection{Types d'instances choisies}
+Conformément aux limitations du Learner Lab, nous avons déployé trois instances:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+        \hline
+        \textbf{Instance} & \textbf{Type} & \textbf{OS} & \textbf{Rôle} \\
+        \hline
+        Serveur Zabbix & t3.large & Ubuntu 22.04 & Serveur de monitoring \\
+        Client Linux & t3.medium & Ubuntu 22.04 & Hôte monitoré Linux \\
+        Client Windows & t3.large & Windows Server 2022 & Hôte monitoré Windows \\
+        \hline
+    \end{tabular}
+    \caption{Configuration des instances EC2 déployées}
+    \label{tab:instances}
+\end{table}
+
+\subsection{Instances en cours d'exécution}
+Toutes les instances ont été lancées dans la région us-east-1 (N. Virginia) pour assurer la stabilité du Lab.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/ec2_instances.png}
+    \caption{Récapitulatif des trois instances EC2 en cours d'exécution avec leurs IPs}
+    \label{fig:ec2list}
+\end{figure}
+
+\subsection{Connexion au serveur Zabbix}
+La connexion SSH à l'instance serveur a été établie avec succès.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/ssh_connection.png}
+    \caption{Connexion SSH réussie à l'instance 'Serveur Zabbix'}
+    \label{fig:ssh}
+\end{figure}
+
+\newpage
+
+% Déploiement du Serveur Zabbix
+\section{Déploiement du Serveur Zabbix en Mode Conteneurisé}
+
+\subsection{Installation de Docker et Docker Compose}
+Sur l'instance serveur, nous avons installé Docker et Docker Compose.
+
+\begin{lstlisting}[caption=Installation de Docker et Docker Compose]
+# Installation de Docker
+sudo apt update && sudo apt upgrade -y
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Installation de Docker Compose
+sudo apt install docker-compose -y
+\end{lstlisting}
+
+\subsection{Configuration du fichier docker-compose.yml}
+Le fichier \texttt{docker-compose.yml} définit trois services: MySQL (base de données), Zabbix Server et l'interface web Zabbix.
+
+\begin{lstlisting}[caption=Fichier docker-compose.yml, language=yaml]
+version: '3.5'
+services:
+    mysql-server:
+        image: mysql:8.0
+        container_name: zabbix-mysql
+        command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+        volumes:
+          - ./zabbix-mysql-data:/var/lib/mysql
+        environment:
+          MYSQL_DATABASE: 'zabbix'
+          MYSQL_USER: 'zabbix'
+          MYSQL_PASSWORD: 'zabbix_pwd'
+          MYSQL_ROOT_PASSWORD: 'root_pwd'
+        restart: always
+        networks:
+          - zbx_network
+
+    zabbix-server:
+        image: zabbix/zabbix-server-mysql:alpine-6.4-latest
+        container_name: zabbix-server
+        environment:
+          DB_SERVER_HOST: 'mysql-server'
+          MYSQL_DATABASE: 'zabbix'
+          MYSQL_USER: 'zabbix'
+          MYSQL_PASSWORD: 'zabbix_pwd'
+          MYSQL_ROOT_PASSWORD: 'root_pwd'
+        ports:
+          - "10051:10051"
+        depends_on:
+          - mysql-server
+        restart: always
+        networks:
+          - zbx_network
+
+    zabbix-web:
+        image: zabbix/zabbix-web-nginx-mysql:alpine-6.4-latest
+        container_name: zabbix-web
+        environment:
+          ZBX_SERVER_HOST: 'zabbix-server'
+          DB_SERVER_HOST: 'mysql-server'
+          MYSQL_DATABASE: 'zabbix'
+          MYSQL_USER: 'zabbix'
+          MYSQL_PASSWORD: 'zabbix_pwd'
+          MYSQL_ROOT_PASSWORD: 'root_pwd'
+          PHP_TZ: 'Europe/Paris'
+        ports:
+          - "80:8080"
+        depends_on:
+          - mysql-server
+          - zabbix-server
+        restart: always
+        networks:
+          - zbx_network
+
+networks:
+    zbx_network:
+        driver: bridge
+\end{lstlisting}
+
+\subsection{Lancement des conteneurs}
+Les conteneurs ont été lancés avec Docker Compose.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/docker_compose_up.png}
+    \caption{Exécution de la commande \texttt{sudo docker-compose up -d} sur le serveur}
+    \label{fig:dockerup}
+\end{figure}
+
+\subsection{Vérification de l'état des conteneurs}
+Les trois conteneurs sont bien en état 'Up', indiquant un fonctionnement correct.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/docker_compose_ps.png}
+    \caption{Résultat de la commande \texttt{sudo docker-compose ps} montrant les conteneurs en état 'Up'}
+    \label{fig:dockerps}
+\end{figure}
+
+\subsection{Accès à l'interface web Zabbix}
+L'interface web est accessible via l'adresse IP publique du serveur.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/zabbix_login.png}
+    \caption{Page de connexion à l'interface web de Zabbix}
+    \label{fig:zabbixlogin}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/zabbix_dashboard.png}
+    \caption{Interface principale de Zabbix après connexion réussie}
+    \label{fig:zabbixdashboard}
+\end{figure}
+
+\newpage
+
+% Configuration des Clients
+\section{Configuration des Clients (Agents Zabbix)}
+
+\subsection{Configuration du client Linux}
+
+\subsubsection{Installation de l'agent}
+Sur l'instance client Linux, nous avons installé l'agent Zabbix.
+
+\begin{lstlisting}[caption=Installation de l'agent sur Linux]
+wget https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
+sudo dpkg -i zabbix-release_6.4-1+ubuntu22.04_all.deb
+sudo apt update
+sudo apt install zabbix-agent -y
+\end{lstlisting}
+
+\subsubsection{Configuration de l'agent}
+Le fichier de configuration a été modifié pour pointer vers le serveur Zabbix.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/linux_agent_conf.png}
+    \caption{Configuration du fichier /etc/zabbix/zabbix\_agentd.conf sur le client Linux}
+    \label{fig:linuxconf}
+\end{figure}
+
+\subsubsection{Démarrage du service}
+Le service a été démarré et configuré pour se lancer automatiquement.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/linux_agent_status.png}
+    \caption{Démarrage du service zabbix-agent avec vérification de son statut}
+    \label{fig:linuxstatus}
+\end{figure}
+
+\subsection{Configuration du client Windows}
+
+\subsubsection{Installation de l'agent}
+Sur l'instance Windows, l'agent a été installé via l'installateur MSI.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/windows_agent_install.png}
+    \caption{Assistant d'installation de l'agent Zabbix pour Windows}
+    \label{fig:wininstall}
+\end{figure}
+
+\subsubsection{Vérification du service}
+Le service Windows a été vérifié dans le gestionnaire de services.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{captures/windows_service.png}
+    \caption{Vérification du service 'Zabbix Agent' dans le gestionnaire de services Windows}
+    \label{fig:winservice}
+\end{figure}
+
+\newpage
+
+% Monitoring et Tableaux de Bord
+\section{Monitoring et Tableaux de Bord}
+
+\subsection{Ajout des hôtes dans Zabbix}
+Dans l'interface web de Zabbix, nous avons ajouté les deux clients comme nouveaux hôtes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/add_host_linux.png}
+    \caption{Formulaire de création de l'hôte pour le client Linux}
+    \label{fig:addhostlinux}
+\end{figure}
+
+\subsection{Statut des hôtes}
+Après quelques minutes, les deux hôtes apparaissent avec une disponibilité verte.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/hosts_green.png}
+    \caption{Liste des hôtes dans Zabbix avec disponibilité VERTE (ZBX)}
+    \label{fig:hostsgreen}
+\end{figure}
+
+\subsection{Visualisation des données}
+
+\subsubsection{Client Linux}
+Le graphique suivant montre l'évolution de la charge CPU du client Linux.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/linux_cpu_graph.png}
+    \caption{Graphique de la charge CPU du client Linux sur les dernières minutes}
+    \label{fig:linuxcpu}
+\end{figure}
+
+\subsubsection{Client Windows}
+Le graphique suivant montre l'utilisation mémoire du client Windows.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/windows_memory_graph.png}
+    \caption{Graphique de l'utilisation mémoire du client Windows}
+    \label{fig:winmemory}
+\end{figure}
+
+\subsection{Données récentes}
+La vue des données récentes permet de vérifier tous les indicateurs collectés.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{captures/latest_data.png}
+    \caption{Vue des données récentes pour le client Linux}
+    \label{fig:latestdata}
+\end{figure}
+
+\newpage
+
+% Conclusion
+\section{Conclusion}
+
+\subsection{Bilan du travail réalisé}
+Ce travail pratique a permis de déployer avec succès une infrastructure de monitoring centralisée sur AWS. L'objectif principal a été atteint : la mise en place d'un serveur Zabbix conteneurisé capable de surveiller un parc hybride composé de machines Linux et Windows.
+
+Les principales réalisations incluent:
+\begin{itemize}
+    \item Configuration complète d'un VPC avec sous-réseau public et groupes de sécurité
+    \item Déploiement de trois instances EC2 avec les configurations appropriées
+    \item Installation et configuration de Zabbix via Docker Compose
+    \item Mise en place des agents sur les systèmes Linux et Windows
+    \item Intégration réussie des hôtes dans l'interface Zabbix avec collecte de données
+\end{itemize}
+
+\subsection{Difficultés rencontrées et solutions}
+Plusieurs difficultés ont été rencontrées durant ce TP:
+
+\begin{itemize}
+    \item \textbf{Limitations du Learner Lab}: Les instances s'arrêtent automatiquement après une période d'inactivité. La solution a été de redémarrer systématiquement les conteneurs Docker avec \texttt{docker-compose up -d} après chaque reprise du Lab.
+    
+    \item \textbf{Correspondance des noms d'hôtes}: Un décalage entre le nom configuré dans l'agent et celui déclaré dans Zabbix empêchait la communication. La solution a été de vérifier rigoureusement que les noms correspondent exactement.
+    
+    \item \textbf{Flux réseau bloqués}: Initialement, les agents ne parvenaient pas à communiquer avec le serveur. La résolution a consisté à vérifier et ajuster les règles des groupes de sécurité pour autoriser les ports Zabbix depuis l'IP privée du serveur.
+\end{itemize}
+
+\subsection{Améliorations possibles}
+Pour aller plus loin, plusieurs améliorations pourraient être apportées:
+
+\begin{itemize}
+    \item Mise en place d'un Zabbix Proxy pour surveiller des réseaux distants
+    \item Configuration d'alertes par email ou par d'autres canaux (Slack, Teams)
+    \item Création de tableaux de bord personnalisés avec les métriques les plus critiques
+    \item Surveillance d'autres services AWS via des templates spécifiques
+    \item Automatisation du déploiement avec des outils comme Terraform ou CloudFormation
+\end{itemize}
+
+Ce TP a permis de démontrer la puissance et la flexibilité de la combinaison AWS/Docker/Zabbix pour la mise en place d'une solution de monitoring professionnelle, scalable et adaptée aux environnements hybrides.
+
+\end{document}
