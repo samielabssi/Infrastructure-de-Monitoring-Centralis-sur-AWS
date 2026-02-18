@@ -452,10 +452,9 @@ ping <IP_PRIVEE_CLIENT>
 
 ## 👨‍💻 Auteur
 
-**Votre Nom**
-- 📧 Email: votre.email@etablissement.fr
-- 🔗 GitHub: [@votreusername](https://github.com/votreusername)
-- 💼 LinkedIn: [Votre Profil](https://linkedin.com/in/votreprofil)
+El Abssi Sami
+- 📧 Email: s.abssi@hestim.ma
+- 🔗 GitHub: [@samielabssi](https://github.com/samielabssi)
 
 ## 📄 Licence
 
