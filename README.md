@@ -452,7 +452,7 @@ ping <IP_PRIVEE_CLIENT>
 
 ## 👨‍💻 Auteur
 
-El Abssi Sami
+**El Abssi Sami**
 - 📧 Email: s.abssi@hestim.ma
 - 🔗 GitHub: [@samielabssi](https://github.com/samielabssi)
 
